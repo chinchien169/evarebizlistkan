@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVASMARTBIZ - ListoBot</title>
+    <style>
+        :root { --bot-blue: #228be6; --bot-dark-blue: #1864ab; --bg-light: #f8f9fa; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-light); margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; flex-direction: column; }
+        .upload-container { background: white; width: 90%; max-width: 600px; padding: 40px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); text-align: center; border: 3px dashed #ccc; transition: 0.3s; }
+        /* Highlighting the box when dragging files over it */
+        .upload-container.dragover { border-color: var(--bot-blue); background-color: #e7f5ff; border-style: solid; }
+        .logo { width: 100px; margin-bottom: 15px; }
+        .btn-primary { background-color: var(--bot-blue); color: white; padding: 15px 35px; font-size: 18px; font-weight: 600; border: none; border-radius: 12px; cursor: pointer; margin: 10px; }
+        .btn-list { background-color: #2fb344; color: white; padding: 15px 35px; font-size: 18px; font-weight: 600; border: none; border-radius: 12px; cursor: pointer; margin-top: 20px; display: none; width: 100%; }
+        #file-input { display: none; }
+        .document-type-selector { text-align: left; margin: 20px auto; width: fit-content; color: #444; background: #fdfdfd; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
+        .document-type-selector label { cursor: pointer; display: block; margin: 8px 0; }
+        .file-row { display: flex; justify-content: space-between; background: #fff; padding: 10px; border-radius: 8px; margin-bottom: 5px; border: 1px solid #eee; text-align: left; font-size: 14px; }
+        #preview-container { margin-top: 25px; border-top: 1px solid #eee; padding-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <div class="upload-container" id="drop-zone">
+        <h2 style="color: var(--bot-blue); margin-top: 0;">EVASMARTBIZ</h2>
+        <img src="logo.png" alt="Logo" class="logo">
+        <h1>ListoBot</h1>
+        <p>Drag & drop or click to select files</p>
+
+        <button class="btn-primary" onclick="document.getElementById('file-input').click()">Select files</button>
+        <input type="file" id="file-input" multiple>
+
+        <div class="document-type-selector">
+            <p style="font-weight: bold; margin-top: 0;">Select Document Type:</p>
+            <label><input type="radio" name="docType" value="bank_statements" checked> Bank Statements</label>
+            <label><input type="radio" name="docType" value="customer_invoice"> Customer/Sales Invoice</label>
+            <label><input type="radio" name="docType" value="supplier_invoice"> Supplier/Purchase Invoice</label>
+        </div>
+
+        <div id="preview-container" style="display:none;">
+            <div id="file-items"></div>
+            <button id="list-btn" class="btn-list">List Them!</button>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const previewContainer = document.getElementById('preview-container');
+        const fileItems = document.getElementById('file-items');
+        const listBtn = document.getElementById('list-btn');
+
+        let selectedFiles = [];
+
+        // UI Logic for selecting files
+        const handleFiles = (files) => {
+            selectedFiles = Array.from(files);
+            if (selectedFiles.length > 0) {
+                previewContainer.style.display = 'block';
+                listBtn.style.display = 'block';
+                fileItems.innerHTML = selectedFiles.map(f => `<div class="file-row"><span>📄 ${f.name}</span><span>${(f.size/1024).toFixed(1)}KB</span></div>`).join('');
+            }
+        };
+
+        // FIX: Mandatory event prevention for Drag and Drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        dropZone.addEventListener('dragover', () => dropZone.classList.add('dragover'));
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        
+        dropZone.addEventListener('drop', (e) => {
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+        // --- N8N SEND LOGIC ---
+        listBtn.addEventListener('click', async () => {
+            const N8N_WEBHOOK_URL = 'https://chinchien169.app.n8n.cloud/webhook/61aeb7c8-39f9-4484-9523-c7c62e0d9b90';
+
+            const selectedDocType = document.querySelector('input[name="docType"]:checked').value;
+            const formData = new FormData();
+            
+            // Add metadata
+            formData.append('documentType', selectedDocType);
+            
+            // Add all files
+            selectedFiles.forEach((file, index) => {
+                formData.append(`file_${index}`, file); 
+            });
+
+            listBtn.innerText = "Processing...";
+            listBtn.disabled = true;
+
+            try {
+                const response = await fetch(N8N_WEBHOOK_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    alert('Success! Files sent to EVASMARTBIZ workflow.');
+                    location.reload(); 
+                } else {
+                    alert('Upload failed. Status: ' + response.status);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Connection error. Is your n8n workflow active?');
+            } finally {
+                listBtn.innerText = "List Them!";
+                listBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
