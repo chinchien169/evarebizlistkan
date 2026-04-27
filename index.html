@@ -64,19 +64,26 @@
             if (selectedFiles.length > 0) {
                 previewContainer.style.display = 'block';
                 listBtn.style.display = 'block';
-                fileItems.innerHTML = selectedFiles.map(f => `<div class="file-row"><span>📄 ${f.name}</span><span>${(f.size/1024).toFixed(1)}KB</span><button class="delete-btn" onclick="removeFile(${i})">✕</button></div>`).join('');
+                fileItems.innerHTML = selectedFiles.map((f, i) => `<div class="file-row"><span>📄 ${f.name}</span><span>${(f.size/1024).toFixed(1)}KB</span><button class="delete-btn" onclick="removeFile(${i})">✕</button></div>`).join('');
             }
         };
 
-        function removeFile(index) {
-            selectedFiles.splice(index, 1);
+            function removeFile(index) {
+            selectedFiles.splice(index, 1);  // remove from array
             if (selectedFiles.length === 0) {
                 previewContainer.style.display = 'none';
                 listBtn.style.display = 'none';
+                fileItems.innerHTML = '';
             } else {
-                handleFiles(selectedFiles);
+                // rebuild the list directly — no handleFiles call
+                fileItems.innerHTML = selectedFiles.map((f, i) => `
+                    <div class="file-row">
+                        <span>📄 ${f.name}</span>
+                        <span>${(f.size/1024).toFixed(1)}KB</span>
+                        <button class="delete-btn" onclick="removeFile(${i})">✕</button>
+                    </div>`).join('');
+                    }
             }
-        }
 
         // FIX: Mandatory event prevention for Drag and Drop
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
